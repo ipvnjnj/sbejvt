@@ -329,16 +329,16 @@ static bool _load_dictionary_file(const char* dictionary_file_name)
 
 static bool _load_dictionary(const char* dictionary_directory)
 {
-    boost::filesystem3::path dd(dictionary_directory);
-    if (!boost::filesystem3::exists(dd)) {
+    boost::filesystem::path dd(dictionary_directory);
+    if (!boost::filesystem::exists(dd)) {
         std::cerr << "directory " << dictionary_directory << " not exites" << std::endl;
         return false;
     }
 
-    boost::filesystem3::directory_iterator end;
-    for (boost::filesystem3::directory_iterator di(dd); di != end; ++di) {
-        if (boost::filesystem3::is_regular_file(di->status())) {
-            if (boost::filesystem3::basename(di->path()).compare(0, 10, "dictionary") == 0) {
+    boost::filesystem::directory_iterator end;
+    for (boost::filesystem::directory_iterator di(dd); di != end; ++di) {
+        if (boost::filesystem::is_regular_file(di->status())) {
+            if (boost::filesystem::basename(di->path()).compare(0, 10, "dictionary") == 0) {
                 _load_dictionary_file(di->path().string().c_str());
             }
         }
