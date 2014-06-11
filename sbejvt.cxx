@@ -104,7 +104,7 @@ static void _radius_process(u_char* user, const struct pcap_pkthdr* h, const u_c
     unsigned char* data = (unsigned char*)udpptr + 8;
 
     unsigned int code = data[0];
-    unsigned int identifier = data[1];
+    //unsigned int identifier = data[1];
     unsigned int length = (data[2] << 8) + data[3];
     uint8_t* authenticator = data + 4;
     /*
