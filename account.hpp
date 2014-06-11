@@ -21,8 +21,10 @@ public:
     {
     }
 
-    void add_attribute(uint8_t id, uint8_t* value, unsigned int length)
+    void add_attribute(unsigned int id, uint8_t* value, unsigned int length)
     {
+        if (id > MAX_ATTRIBUTE_ID) return;
+
         _attributes[id].get<0>() = id;
         if (length > MAX_VALUE_LENGTH) length = MAX_VALUE_LENGTH;
         memcpy(_attributes[id].get<1>(), value, length);
@@ -41,7 +43,10 @@ public:
 
     std::pair<uint8_t*, std::size_t> get_attribute_value(unsigned int attribute_id)
     {
-        return std::make_pair(_attributes[attribute_id].get<1>(), _attributes[attribute_id].get<2>());
+        if (attribute_id > MAX_ATTRIBUTE_ID)
+            return std::make_pair((uint8_t*)0, 0);
+        else 
+            return std::make_pair(_attributes[attribute_id].get<1>(), _attributes[attribute_id].get<2>());
     }
 };
 

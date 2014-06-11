@@ -1,9 +1,9 @@
 #include <net/ethernet.h>
 #include <netinet/ip.h>
-#include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 
+#include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -36,6 +36,7 @@ static void _print_attribute(account& acc, std::string attribute_name)
     unsigned int attribute_id = g_standard_attributes.get_id(attribute_name);
     std::pair<uint8_t*, std::size_t> attribute_value = acc.get_attribute_value(attribute_id);
     uint8_t* value = attribute_value.first;
+    if (value == NULL) return;
     std::size_t length = attribute_value.second;
 
     switch (g_standard_attributes.get_value_type(attribute_id)) {
@@ -56,9 +57,10 @@ static void _print_attribute(account& acc, std::string attribute_name)
 
     case ATTRIBUTE_VALUE_TYPE_DATE:
     {
-        std::string time_string(ctime((const time_t*)value));
-        time_string.erase(time_string.end() - 1, time_string.end());
-        std::cout << time_string;
+        time_t t = ntohl(*(uint32_t*)value);
+        char buffer[128];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&t));
+        std::cout << buffer;
         break;
     }
 
@@ -165,8 +167,10 @@ static void _radius_process(u_char* user, const struct pcap_pkthdr* h, const u_c
         //ProviderID SrcIP DstIP Account UserPassword Acct_Sess_Id Acct_Multi_Sess_Id Acct_Link_Count Acct_Input_Octets Acct_Output_Octets Acct_Input_Packets Acct_Output_Packets Starttime Endtime Request_auth nas_ipaddr radius_ipaddr framed_ip_address calling_tel acct_status_type ignored nas_domainname capturetime nas_port_type nas_delay_time off_cause
 #define PROVIDER_ID 13
         std::cout << PROVIDER_ID << DELIMITER;
+
         std::cout << ntohl(ipptr->saddr) << DELIMITER;
         std::cout << ntohl(ipptr->daddr) << DELIMITER;
+
         _print_attribute(acc, "User-Name");
         _print_attribute(acc, "User-Password");
         _print_attribute(acc, "Acct-Session-Id");
@@ -176,30 +180,58 @@ static void _radius_process(u_char* user, const struct pcap_pkthdr* h, const u_c
         _print_attribute(acc, "Acct-Output-Octets");
         _print_attribute(acc, "Acct-Input-Packets");
         _print_attribute(acc, "Acct-Output-Packets");
-        _print_attribute(acc, "Event-Timestamp");
-        _print_attribute(acc, "Acct-Session-Time"); 
+        //_print_attribute(acc, "Event-Timestamp");
+        //_print_attribute(acc, "Acct-Session-Time"); 
+        {
+            // Here we does'nt use _print_attribute() function and mannuly get the value. Because the value of "acct-session-time" need added to the value of "evnet-timestamp". 
+            unsigned int event_timestamp_id = g_standard_attributes.get_id("Event-Timestamp");
+            std::pair<uint8_t*, std::size_t> event_timestamp = acc.get_attribute_value(event_timestamp_id);
+            time_t t1 = ntohl(*(uint32_t*)(event_timestamp.first));
+            char buffer[128];
+            strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&t1));
+            std::cout << buffer << DELIMITER;
+
+            unsigned int acct_session_time_id = g_standard_attributes.get_id("Acct-Session-Time");
+            std::pair<uint8_t*, std::size_t> acct_session_time = acc.get_attribute_value(acct_session_time_id);
+            time_t t2 = ntohl(*(uint32_t*)(acct_session_time.first));
+            if (t2 > 0) {
+                t1 += t2;
+                strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&t1));
+                std::cout << buffer;
+            }
+            std::cout << DELIMITER;
+        }
+
         // the authenticator is 16 bytes long
         std::cout << std::hex << std::setiosflags(std::ios::uppercase);
         for (int i = 0; i < 16; i++) {
             std::cout << (unsigned int)(authenticator[i]);
         }
         std::cout << std::dec << DELIMITER;
+
         _print_attribute(acc, "NAS-IP-Address");
-        // Radius IP Address, use dest IP address        
+        // Radius IP Address, use dest IP address
         std::cout << ntohl(ipptr->daddr) << DELIMITER;
         _print_attribute(acc, "Framed-IP-Address");
         _print_attribute(acc, "Calling-Station-Id");
         _print_attribute(acc, "Called-Station-Id");
         _print_attribute(acc, "Acct-Status-Type");
+
         // ignored?
         std::cout << '0' << DELIMITER;
+
         // NAS domain?
         std::cout << DELIMITER;
+
         // captur time
-        std::cout << h->ts.tv_sec << '.' << h->ts.tv_usec << DELIMITER;
+        char buffer[128];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&(h->ts.tv_sec)));
+        std::cout << buffer << '.' << h->ts.tv_usec << DELIMITER;
+
         _print_attribute(acc, "NAS-Port-Type");
         _print_attribute(acc, "Acct-Delay-Time");
         _print_attribute(acc, "Acct-Terminate-Cause");
+
         std::cout << std::endl;
 
         acc.clear_attributes();
@@ -217,7 +249,7 @@ static void _radius_process(u_char* user, const struct pcap_pkthdr* h, const u_c
 
 static bool _load_dictionary_file(const char* dictionary_file_name)
 {
-    std::cout << "load " << dictionary_file_name << std::endl;
+    std::cout << "load dictionary " << dictionary_file_name << std::endl;
 
     std::ifstream df(dictionary_file_name);
     if (!df.good()) {
@@ -271,11 +303,11 @@ static bool _load_dictionary_file(const char* dictionary_file_name)
             else if (temp.compare("vsa") == 0)
                 value_type = ATTRIBUTE_VALUE_TYPE_VENDOR_SPECIFIC;
             else {
-                std::cout << "unkown attribute value type: " << temp << std::endl;
+                std::cerr << "unkown attribute value type: " << temp << std::endl;
                 value_type = ATTRIBUTE_VALUE_TYPE_UNKNOWN;
             }
 
-            std::cout << "add attribute " << name << ' ' << id << ' ' << value_type << std::endl;
+            //std::cout << "add attribute " << name << ' ' << id << ' ' << value_type << std::endl;
             attr.set_attribute(name, id, value_type);
         }
         else if (keyword.compare("VALUE") == 0) {
@@ -372,7 +404,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    //
+    // write to file
     if (!write_file_name.empty()) {
         // redirect std::cout
         write_file.open(write_file_name.c_str());

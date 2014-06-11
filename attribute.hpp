@@ -53,7 +53,7 @@ public:
 
     bool defined(unsigned int attribute_id)
     {
-        return (_attributes[attribute_id].get<1>() != 0);
+        return ((attribute_id <= MAX_ATTRIBUTE_ID) && (_attributes[attribute_id].get<1>() != 0));
     }
 
     unsigned int get_id(std::string attribute_name)
