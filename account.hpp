@@ -1,6 +1,8 @@
 #ifndef SBEJVT_ACCOUNT_HPP
 #define SBEJVT_ACCOUNT_HPP
 
+#include <cstring>
+
 #include "boost/array.hpp"
 #include "boost/tuple/tuple.hpp"
 
