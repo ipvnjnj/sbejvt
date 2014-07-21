@@ -4,16 +4,19 @@
 #include <cstring>
 
 #include "boost/array.hpp"
-#include "boost/tuple/tuple.hpp"
+#include "boost/unordered_map.hpp"
 
 #include "attribute.hpp"
 
 #define MAX_VALUE_LENGTH 255
 
+typedef std::pair<uint8_t[MAX_VALUE_LENGTH], std::size_t> VL;
+
 class account {
 private:
     // attributes
-    boost::array< boost::tuple<uint8_t, uint8_t[MAX_VALUE_LENGTH], std::size_t>, MAX_ATTRIBUTE_ID + 1 > _attributes;
+    // the vendor specific id is vendor_id * 256 + vendor_attribute_id
+    boost::unordered_map<unsigned int/*id*/, VL> _attributes;
 
 public:
     account()
@@ -25,30 +28,24 @@ public:
 
     void add_attribute(unsigned int id, uint8_t* value, unsigned int length)
     {
-        if (id > MAX_ATTRIBUTE_ID) return;
-
-        _attributes[id].get<0>() = id;
+        VL vl;
         if (length > MAX_VALUE_LENGTH) length = MAX_VALUE_LENGTH;
-        memcpy(_attributes[id].get<1>(), value, length);
-        _attributes[id].get<2>() = length;
+        memcpy(vl.first, value, length);
+        vl.second = length;
+
+        _attributes[id] = vl;
     }
 
-    void clear_attributes()
+    void clear_attributes(void)
     {
-        std::size_t i;
-        for (i = 0; i < _attributes.size(); i++) {
-            _attributes[i].get<0>() = 0;
-            _attributes[i].get<1>()[0] = '\0';
-            _attributes[i].get<2>() = 0;
-        }
+        _attributes.clear();
     }
 
-    std::pair<uint8_t*, std::size_t> get_attribute_value(unsigned int attribute_id)
+    std::pair<const uint8_t*, std::size_t> get_attribute_value(unsigned int id)
     {
-        if (attribute_id > MAX_ATTRIBUTE_ID)
-            return std::make_pair((uint8_t*)0, 0);
-        else 
-            return std::make_pair(_attributes[attribute_id].get<1>(), _attributes[attribute_id].get<2>());
+        if (_attributes.find(id) != _attributes.end())
+            return std::make_pair(_attributes[id].first, _attributes[id].second);
+        return std::make_pair((const uint8_t*)0, 0);
     }
 };
 

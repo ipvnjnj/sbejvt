@@ -1,0 +1,11 @@
+#
+# Vendor-specific attributes for China Telecom
+#
+
+VENDOR      China-Telecom   20942
+
+BEGIN-VENDOR China-Telecom
+
+ATTRIBUTE   Telephone-Number      100 string
+
+END-VENDOR China-Telecom

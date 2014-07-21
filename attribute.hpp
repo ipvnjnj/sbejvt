@@ -51,12 +51,12 @@ public:
         _vendor_id = id; 
     }
 
-    bool defined(unsigned int attribute_id)
+    bool defined(unsigned int attribute_id) const
     {
         return ((attribute_id <= MAX_ATTRIBUTE_ID) && (_attributes[attribute_id].get<1>() != 0));
     }
 
-    unsigned int get_id(std::string attribute_name)
+    unsigned int get_id(std::string attribute_name) const
     {
         std::size_t i;
         for (i = 0; i < _attributes.size(); i++) {
@@ -69,16 +69,18 @@ public:
         return i;
     }
 
-    ATTRIBUTE_VALUE_TYPE get_value_type(unsigned int attribute_id)
+    ATTRIBUTE_VALUE_TYPE get_value_type(unsigned int attribute_id) const
     {
-        return _attributes[attribute_id].get<2>();
+        return (attribute_id <= MAX_ATTRIBUTE_ID) ? _attributes[attribute_id].get<2>() : ATTRIBUTE_VALUE_TYPE_UNKNOWN;
     }
 
     void set_attribute(std::string name, unsigned int id, ATTRIBUTE_VALUE_TYPE value_type)
     {
-        _attributes[id].get<0>() = name;
-        _attributes[id].get<1>() = id;
-        _attributes[id].get<2>() = value_type;
+        if (id <= MAX_ATTRIBUTE_ID) {
+            _attributes[id].get<0>() = name;
+            _attributes[id].get<1>() = id;
+            _attributes[id].get<2>() = value_type;
+        }
     }
 };
 
